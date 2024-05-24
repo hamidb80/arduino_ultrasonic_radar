@@ -77,21 +77,18 @@ struct Distances {
 
 Servo servoMotor;
 
-#if defined(UGClib)
-  TFT             tft = TFT            (TFT_CS, TFT_DS, TFT_RST);
-#elif defined(AdaFruitGFX)
-  Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DS, TFT_RST);
-#endif
-
+auto tft = 
+  #if defined(UGClib)        
+    TFT            (TFT_CS, TFT_DS, TFT_RST);
+  #elif defined(AdaFruitGFX) 
+    Adafruit_ST7735(TFT_CS, TFT_DS, TFT_RST);
+  #endif
 
 int 
   W    =  tft.width(),
   H    =  tft.height(),
-  size  = min(W, H),
-  cx   = W / 2,
-  cy   = H / 2,
-
-  max_dist        = 80, // in cm
+  
+  max_dist        = 100, // in cm
 
   virtual_deg     =  0,
   dir             = +1,
@@ -223,14 +220,19 @@ void loop() {
 
   Distances dists = getDistance();
   int 
-    mf    = constrain(dists.forward,  10, max_dist),
-    mb    = constrain(dists.backward, 10, max_dist),
-    rx    = cosd(deg) * size / 2,
-    ry    = sind(deg) * size / 2,
-    fdx   = rx        * +mf  / max_dist,
-    fdy   = ry        * +mf  / max_dist,
-    bdx   = rx        * -mb  / max_dist,
-    bdy   = ry        * -mb  / max_dist
+    mf     = constrain(dists.forward,  20, max_dist),
+    mb     = constrain(dists.backward, 20, max_dist),
+    
+    radius = min(W, H),
+    cx     = W / 2,
+    cy     = H / 2,
+    rx    = cosd(deg) * radius / 2,
+    ry    = sind(deg) * radius / 2,
+    
+    fdx   = rx * +mf / max_dist,
+    fdy   = ry * +mf / max_dist,
+    bdx   = rx * -mb / max_dist,
+    bdy   = ry * -mb / max_dist
   ;
   Theme t = themes[theme_of_choice];
   Color 
