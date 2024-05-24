@@ -225,12 +225,12 @@ void loop() {
   int 
     mf    = constrain(dists.forward,  10, max_dist),
     mb    = constrain(dists.backward, 10, max_dist),
-    rx    = cosd(deg) * size  / 2,
-    ry    = sind(deg) * size  / 2,
-    fdx   = rx        * +mf / max_dist,
-    fdy   = ry        * +mf / max_dist,
-    bdx   = rx        * -mb / max_dist,
-    bdy   = ry        * -mb / max_dist
+    rx    = cosd(deg) * size / 2,
+    ry    = sind(deg) * size / 2,
+    fdx   = rx        * +mf  / max_dist,
+    fdy   = ry        * +mf  / max_dist,
+    bdx   = rx        * -mb  / max_dist,
+    bdy   = ry        * -mb  / max_dist
   ;
   Theme t = themes[theme_of_choice];
   Color 
