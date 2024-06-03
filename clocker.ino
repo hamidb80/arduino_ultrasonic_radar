@@ -279,7 +279,7 @@ void loop() {
     drawLineScreen(cf,    cx,    cy,    cx+fdx, cy+fdy);
     drawLineScreen(cb,    cx,    cy,    cx+bdx, cy+bdy);
 
-    deg += dir * 60;
+    deg += dir;
     if     (deg >= 180 && dir == +1) dir = -1;
     else if(deg <= 0   && dir == -1) dir = +1;
   }
