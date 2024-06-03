@@ -12,9 +12,10 @@ Acknowledgements:
   - Arduino Tutorial: Using the ST7735 1.8" Color TFT Display with Arduino: https://youtube.com/watch?v=boagCpb6DgY
   - Arduino Tutorial: 1.8" TFT Color Display ST7735 128x160:                https://youtube.com/watch?v=NAyt5kQcn-A
   - How to Control a Servo With an Arduino:                                 https://youtube.com/watch?v=QbgTl6VSA9Y
+  - The Simplest Way to Wire a Button to Arduino (with Internal Pull-Up)    https://youtube.com/watch?v=Xz4iVpdMd-w
 
   Contents:
-  - AdaFruitGFX GFX Graphics Library  Graphics Primitives:                  https://learn.adafruit.com/adafruit-gfx-graphics-library/graphics-primitives
+  - AdaFruitGFX GFX Graphics Library - Graphics Primitives:                 https://learn.adafruit.com/adafruit-gfx-graphics-library/graphics-primitives
   - convert RGB-888 to RGB-565:                                             https://stackoverflow.com/questions/11471122/rgb888-to-rgb565-bit-shifting
   - RGB-565 color picker:                                                   https://rgbcolorpicker.com/565
 
@@ -40,22 +41,27 @@ Acknowledgements:
 
 // Pins ----------------------------------------------------
 
-
-// TFT :: Monitor
+// --- TFT :: Monitor ---
+// #define TFT_VDD  5v
+// #define TFT_GND  0v
 #define TFT_CS   10
-#define TFT_DS   9
 #define TFT_RST  8
+#define TFT_DC   9
+#define TFT_SDA  11
+#define TFT_CSK  13
+// #define TFT_LED  3.3v
 
-// Ultra Sonic :: Distance Meter
-#define US_trig_1   4
-#define US_trig_2   0
-#define US_echoPin_1       7
-#define US_echoPin_2       2
+// --- Ultra Sonic :: Distance Meter ---
+#define US_trig_1    4
+#define US_trig_2    0
+#define US_echoPin_1 7
+#define US_echoPin_2 2
 
-// Engine :: Servo 
+// --- Engine :: Servo ---
 #define ServoMotorPin  5
 #define ServoMaxDegree 270
 
+// --- Others ---
 #define BtnPin         A0
 
 // Data Structures ----------------------------------------------------
@@ -77,13 +83,15 @@ struct Distances {
 
 // globals ---------------------------------------------------------
 
+#define themes_len  4
+
 Servo servoMotor;
 
 auto tft = 
   #if defined(UGClib)        
-    TFT            (TFT_CS, TFT_DS, TFT_RST);
+    TFT            (TFT_CS, TFT_DC, TFT_RST);
   #elif defined(AdaFruitGFX) 
-    Adafruit_ST7735(TFT_CS, TFT_DS, TFT_RST);
+    Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
   #endif
 
 int 
@@ -94,8 +102,8 @@ int
 
   deg             =  0,
   dir             = +1,
+  
   theme_of_choice =  2
-
   ;
 
 bool
@@ -119,7 +127,7 @@ Color
   light_blue  = {60,   20, 255}
   ;
 
-Theme themes[] = {
+Theme themes[themes_len] = {
   {lemon,       red},
   {cyan,        purple},
   {light_blue,  red},
@@ -236,13 +244,8 @@ void setup() {
 
 void loop() {
   if (digitalRead(BtnPin) == LOW){
-    stopped = !stopped;
-
-    if (stopped)
-      Serial.println("stopped");
-    else
-      Serial.println("playing");
-    delay(1000);
+    theme_of_choice ++;
+    delay(10);
   }
   
   if (stopped){}
@@ -266,7 +269,7 @@ void loop() {
       bdx   = rx * -mb / max_dist,
       bdy   = ry * -mb / max_dist
     ;
-    Theme t = themes[theme_of_choice];
+    Theme t = themes[theme_of_choice % themes_len];
     Color 
       cf = gradient(constrain(mf, 10, max_dist), 10, max_dist, t.close, t.far),
       cb = gradient(constrain(mb, 10, max_dist), 10, max_dist, t.close, t.far)
@@ -276,7 +279,7 @@ void loop() {
     drawLineScreen(cf,    cx,    cy,    cx+fdx, cy+fdy);
     drawLineScreen(cb,    cx,    cy,    cx+bdx, cy+bdy);
 
-    deg += dir;
+    deg += dir * 60;
     if     (deg >= 180 && dir == +1) dir = -1;
     else if(deg <= 0   && dir == -1) dir = +1;
   }
