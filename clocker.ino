@@ -4,7 +4,7 @@ Repository:
   https://github.com/hamidb80/arduino_ultrasonic_radar
 
 Descriptions:
-  an Arduino Uno R3 uses a 270-degree servo motor to rotate 2 ultra sonic sensors. 
+  an Arduino Uno R3 uses a 180-degree servo motor to rotate 2 ultra sonic sensors. 
   it then measures the distances of frontside and backside and plot them in a 128x160 TFT display.
 
 Acknowledgements:
@@ -40,7 +40,6 @@ Acknowledgements:
 
 // Pins ----------------------------------------------------
 
-// TODO explain about models of devices
 
 // TFT :: Monitor
 #define TFT_CS   10
@@ -48,13 +47,16 @@ Acknowledgements:
 #define TFT_RST  8
 
 // Ultra Sonic :: Distance Meter
-#define US_commonTrigPin   4
+#define US_trig_1   4
+#define US_trig_2   0
 #define US_echoPin_1       7
 #define US_echoPin_2       2
 
 // Engine :: Servo 
 #define ServoMotorPin  5
 #define ServoMaxDegree 270
+
+#define BtnPin         A0
 
 // Data Structures ----------------------------------------------------
 
@@ -90,9 +92,14 @@ int
   
   max_dist        = 100, // in cm
 
-  virtual_deg     =  0,
+  deg             =  0,
   dir             = +1,
-  theme_of_choice = 0
+  theme_of_choice =  2
+
+  ;
+
+bool
+  stopped         = false 
   ;
 
 Color 
@@ -108,12 +115,14 @@ Color
   red         = {255, 0,   0  },
   dark_red    = {100, 4,   27 },
   cyan        = {85,  237, 242},
-  purple      = {110,  6,   100}
+  purple      = {110,  6,  100},
+  light_blue  = {60,   20, 255}
   ;
 
 Theme themes[] = {
-  {lemon,  red},
-  {cyan,  purple},
+  {lemon,       red},
+  {cyan,        purple},
+  {light_blue,  red},
   {really_dark, white},
 };
 
@@ -122,33 +131,25 @@ Theme themes[] = {
 double deg2rad(int deg){
   return ((double)deg) / 180.0 * PI;
 }
-double sind(int deg){
+double sind   (int deg){
   return sin(deg2rad(deg));
 }
-double cosd(int deg){
+double cosd   (int deg){
   return cos(deg2rad(deg));
 }
 
-long microsecondsToCentimeters(long microseconds) {
+long ms2cm(long microseconds) {
+  // micro-seconds to centi-meters
   return microseconds / 29 / 2;
-}
-
-int pick(float percent, int a, int b){
-  int 
-    dir = b - a,
-    mov = percent * dir;
-  return a + mov;
 }
 
 // Utils ----------------------------------------------------
 
 Color gradient(int select, int floor, int top, Color head, Color tail){
-  // percent is a float number between 0 & 1
-  float percent = (float)(select - floor) / (top - floor);
   return {
-    pick(percent, head.r, tail.r),
-    pick(percent, head.g, tail.g),
-    pick(percent, head.b, tail.b),
+    map(select, floor, top, head.r, tail.r),
+    map(select, floor, top, head.g, tail.g),
+    map(select, floor, top, head.b, tail.b),
   };
 }
 
@@ -171,37 +172,34 @@ void drawLineScreen(Color c, int x1, int y1, int x2, int y2){
 }
 
 long readDistance(int echo_pin){
-  return 
-    microsecondsToCentimeters(
-      pulseIn(
-        echo_pin, 
-        HIGH));
+  return ms2cm(pulseIn(echo_pin, HIGH));
 }
-
-void sendWave(){
-  digitalWrite(US_commonTrigPin, LOW);
+void sendWave(int trigPort){
+  digitalWrite(trigPort, LOW);
   delayMicroseconds(2);
-  digitalWrite(US_commonTrigPin, HIGH);
+  digitalWrite(trigPort, HIGH);
   delayMicroseconds(5);
-  digitalWrite(US_commonTrigPin, LOW);
+  digitalWrite(trigPort, LOW);
 }
 Distances getDistance(){
-  sendWave();
+  sendWave(US_trig_1);
+  sendWave(US_trig_2);
+  
   int 
-    d1 = readDistance(US_echoPin_1);
+    d1 = readDistance(US_echoPin_1),
+    d2 = readDistance(US_echoPin_2);
 
-  return {d1, d1};
+  return {d1, d2};
 }
 
-// Arduino's built-ins ----------------------------------------------------
+// setup ----------------------------------------------------
 
-void setup() {
-  Serial.begin(9600);
+void setup_ultrasonic(int trigPin, int echoPin){
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+}
 
-  pinMode(US_commonTrigPin, OUTPUT);
-  pinMode(US_echoPin_1, INPUT);
-  pinMode(US_echoPin_2, INPUT);
-
+void setup_tft_screen(){
   #if defined(UGClib)
     tft.begin();
     tft.background(0, 0, 0);
@@ -209,45 +207,77 @@ void setup() {
     tft.initR(INITR_BLACKTAB); 
     tft.fillScreen(ST7735_BLACK); 
   #endif
- 
-  servoMotor.attach(ServoMotorPin);
 }
 
-void loop() {
-  int deg = map(virtual_deg, 0, ServoMaxDegree, 0, 180);
+void setup_serial(){
+  Serial.begin(9600);
+}
+
+void setup_servo(int pwnPin){
+  servoMotor.attach(pwnPin);
+}
+
+void setup_buttons(){
+  pinMode(BtnPin, INPUT_PULLUP);
+}
+
+void setup() {
+  setup_serial();
+  setup_servo(ServoMotorPin);
+  setup_buttons();
+
+  setup_ultrasonic(US_trig_1, US_echoPin_1);
+  setup_ultrasonic(US_trig_2, US_echoPin_2);
   
-  servoMotor.write(deg);
+  setup_tft_screen();
+}
 
-  Distances dists = getDistance();
-  int 
-    mf     = constrain(dists.forward,  20, max_dist),
-    mb     = constrain(dists.backward, 20, max_dist),
-    
-    radius = min(W, H),
-    cx     = W / 2,
-    cy     = H / 2,
-    rx    = cosd(deg) * radius / 2,
-    ry    = sind(deg) * radius / 2,
-    
-    fdx   = rx * +mf / max_dist,
-    fdy   = ry * +mf / max_dist,
-    bdx   = rx * -mb / max_dist,
-    bdy   = ry * -mb / max_dist
-  ;
-  Theme t = themes[theme_of_choice];
-  Color 
-    cf = gradient(constrain(mf, 10, max_dist), 10, max_dist, t.close, t.far),
-    cb = gradient(constrain(mb, 10, max_dist), 10, max_dist, t.close, t.far)
-  ;
+// run ----------------------------------------------------
 
-  drawLineScreen(black, cx-rx, cy-ry, cx+rx,  cy+ry);  
-  drawLineScreen(cf,    cx,    cy,    cx+fdx, cy+fdy);
-  drawLineScreen(cb,    cx,    cy,    cx+bdx, cy+bdy);
+void loop() {
+  if (digitalRead(BtnPin) == LOW){
+    stopped = !stopped;
 
-  virtual_deg += dir;
-  if     (deg >= 180 && dir == +1) dir = -1;
-  else if(deg <= 0   && dir == -1) dir = +1;
+    if (stopped)
+      Serial.println("stopped");
+    else
+      Serial.println("playing");
+    delay(1000);
+  }
+  
+  if (stopped){}
+  else{
+    Serial.println  (deg);
+    servoMotor.write(deg);
 
-  // Serial.println(millis());
-  // delay(100);
+    Distances dists = getDistance();
+    int 
+      mf     = constrain(dists.forward,  10, max_dist),
+      mb     = constrain(dists.backward, 10, max_dist),
+      
+      radius = min(W, H),
+      cx     = W / 2,
+      cy     = H / 2,
+      rx    = cosd(deg) * radius / 2,
+      ry    = sind(deg) * radius / 2,
+      
+      fdx   = rx * +mf / max_dist,
+      fdy   = ry * +mf / max_dist,
+      bdx   = rx * -mb / max_dist,
+      bdy   = ry * -mb / max_dist
+    ;
+    Theme t = themes[theme_of_choice];
+    Color 
+      cf = gradient(constrain(mf, 10, max_dist), 10, max_dist, t.close, t.far),
+      cb = gradient(constrain(mb, 10, max_dist), 10, max_dist, t.close, t.far)
+    ;
+
+    drawLineScreen(black, cx-rx, cy-ry, cx+rx,  cy+ry);  
+    drawLineScreen(cf,    cx,    cy,    cx+fdx, cy+fdy);
+    drawLineScreen(cb,    cx,    cy,    cx+bdx, cy+bdy);
+
+    deg += dir;
+    if     (deg >= 180 && dir == +1) dir = -1;
+    else if(deg <= 0   && dir == -1) dir = +1;
+  }
 }
