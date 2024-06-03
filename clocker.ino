@@ -42,6 +42,7 @@ Acknowledgements:
 // Pins ----------------------------------------------------
 
 // --- TFT :: Monitor ---
+
 // #define TFT_VDD  5v
 // #define TFT_GND  0v
 #define TFT_CS   10
@@ -52,17 +53,21 @@ Acknowledgements:
 // #define TFT_LED  3.3v
 
 // --- Ultra Sonic :: Distance Meter ---
+
+// #define US_VDD  5v
 #define US_trig_1    4
-#define US_trig_2    0
+#define US_trig_2    5
 #define US_echoPin_1 7
 #define US_echoPin_2 2
+// #define US_GND  0v
 
 // --- Engine :: Servo ---
 #define ServoMotorPin  5
-#define ServoMaxDegree 270
 
 // --- Others ---
 #define BtnPin         A0
+
+#define speed          1
 
 // Data Structures ----------------------------------------------------
 
@@ -255,8 +260,8 @@ void loop() {
 
     Distances dists = getDistance();
     int 
-      mf     = constrain(dists.forward,  10, max_dist),
-      mb     = constrain(dists.backward, 10, max_dist),
+      mf     = constrain(dists.forward,  20, max_dist),
+      mb     = constrain(dists.backward, 20, max_dist),
       
       radius = min(W, H),
       cx     = W / 2,
@@ -279,7 +284,7 @@ void loop() {
     drawLineScreen(cf,    cx,    cy,    cx+fdx, cy+fdy);
     drawLineScreen(cb,    cx,    cy,    cx+bdx, cy+bdy);
 
-    deg += dir;
+    deg += dir * speed;
     if     (deg >= 180 && dir == +1) dir = -1;
     else if(deg <= 0   && dir == -1) dir = +1;
   }
