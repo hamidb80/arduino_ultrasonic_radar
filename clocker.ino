@@ -248,13 +248,6 @@ void setup() {
 // run ----------------------------------------------------
 
 void loop() {
-  if (digitalRead(BtnPin) == LOW){
-    theme_of_choice ++;
-    delay(10);
-  }
-  
-  if (stopped){}
-  else{
     Serial.println  (deg);
     servoMotor.write(deg);
 
@@ -287,5 +280,4 @@ void loop() {
     deg += dir * speed;
     if     (deg >= 180 && dir == +1) dir = -1;
     else if(deg <= 0   && dir == -1) dir = +1;
-  }
 }
