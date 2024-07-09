@@ -62,7 +62,7 @@ Acknowledgements:
 // #define US_GND  0v
 
 // --- Engine :: Servo ---
-#define ServoMotorPin  5
+#define ServoMotorPin  3
 
 // --- Others ---
 #define BtnPin         A0
@@ -104,11 +104,15 @@ int
   H    =  tft.height(),
   
   max_dist        = 100, // in cm
+  min_dist        = 20,
 
   deg             =  0,
   dir             = +1,
   
-  theme_of_choice =  2
+  theme_of_choice =  0,
+
+  degree_offset   = +30,
+  degree_calibre  = -1
   ;
 
 bool
@@ -130,7 +134,7 @@ Color
   cyan        = {85,  237, 242},
   purple      = {110,  6,  100},
   light_blue  = {60,   20, 255}
-  ;
+;
 
 Theme themes[themes_len] = {
   {lemon,       red},
@@ -196,12 +200,9 @@ void sendWave(int trigPort){
 }
 Distances getDistance(){
   sendWave(US_trig_1);
+  int d1 = readDistance(US_echoPin_1);
   sendWave(US_trig_2);
-  
-  int 
-    d1 = readDistance(US_echoPin_1),
-    d2 = readDistance(US_echoPin_2);
-
+  int d2 = readDistance(US_echoPin_2);
   return {d1, d2};
 }
 
@@ -236,6 +237,7 @@ void setup_buttons(){
 
 void setup() {
   setup_serial();
+  
   setup_servo(ServoMotorPin);
   setup_buttons();
 
@@ -248,26 +250,45 @@ void setup() {
 // run ----------------------------------------------------
 
 void loop() {
-    Serial.println  (deg);
     servoMotor.write(deg);
-
     Distances dists = getDistance();
-    int 
-      mf     = constrain(dists.forward,  20, max_dist),
-      mb     = constrain(dists.backward, 20, max_dist),
-      
+    int
+      virtual_deg = degree_calibre * deg + degree_offset,
+
+      mf     = constrain(dists.forward,  min_dist, max_dist),
+      mb     = constrain(dists.backward, min_dist, max_dist)
+    ;      
+
+    // log
+    // if (false)
+    {
+      Serial.print(deg);
+      Serial.print(", ");
+      Serial.print(0);
+      Serial.print(", ");
+      Serial.print(max_dist);
+      Serial.print(", ");
+      Serial.print(mb);
+      Serial.print(", ");
+      Serial.print(mf);
+      Serial.println();
+    }
+
+    int
       radius = min(W, H),
       cx     = W / 2,
       cy     = H / 2,
-      rx    = cosd(deg) * radius / 2,
-      ry    = sind(deg) * radius / 2,
+      rx    = cosd(virtual_deg) * radius / 2,
+      ry    = sind(virtual_deg) * radius / 2,
       
       fdx   = rx * +mf / max_dist,
       fdy   = ry * +mf / max_dist,
       bdx   = rx * -mb / max_dist,
       bdy   = ry * -mb / max_dist
     ;
-    Theme t = themes[theme_of_choice % themes_len];
+    Theme 
+      t = themes[theme_of_choice % themes_len]
+    ;
     Color 
       cf = gradient(constrain(mf, 10, max_dist), 10, max_dist, t.close, t.far),
       cb = gradient(constrain(mb, 10, max_dist), 10, max_dist, t.close, t.far)
